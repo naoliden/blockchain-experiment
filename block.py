@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 
-class Block(object):
+class Block():
     def __init__(self, **dictionary):
         '''
         We're looking for index, timestamp, data, prev_hash, nonce
