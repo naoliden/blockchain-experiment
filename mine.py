@@ -1,53 +1,51 @@
 import datetime as date
+import time
 import sync
+import json
 import hashlib
+import requests
+import os
+import glob
+
 from block import Block
+from config import *
+import utils
 
+def mine_for_block():
+  print "mine for block sync"
+  current_chain = sync.sync_local() #gather last node
+  print "mine for block sync done"
+  prev_block = current_chain.most_recent_block()
+  new_block = mine_blocks(prev_block)
+  new_block.self_save()
+  return new_block
 
-NUM_ZEROS = 5
+def mine_blocks(last_block):
+  index = int(last_block.index) + 1
+  timestamp = date.datetime.now().strftime('%s')
+  data = "I block #%s" % (int(last_block.index) + 1) #random string for now, not transactions
+  prev_hash = last_block.hash
+  nonce = 0
 
+  block_info_dict = utils.dict_from_block_attributes(index=index, timestamp=timestamp, data=data, prev_hash=prev_hash, nonce=nonce)
+  new_block = Block(block_info_dict)
+  return find_valid_nonce(new_block)
 
-def generate_header(index, prev_hash, data, timestamp, nonce):
-    return str(index) + prev_hash + data + str(timestamp) + str(nonce)
+def find_valid_nonce(new_block):
+  print "mining for block %s" % new_block.index
+  new_block.update_self_hash()#calculate_hash(index, prev_hash, data, timestamp, nonce)
+  while str(new_block.hash[0:NUM_ZEROS]) != '0' * NUM_ZEROS:
+    new_block.nonce += 1
+    new_block.update_self_hash()
 
+  print "block %s mined. Nonce: %s" % (new_block.index, new_block.nonce)
 
-def calculate_hash(index, prev_hash, data, timestamp, nonce):
-    header_string = generate_header(index, prev_hash, data, timestamp, nonce)
-    sha = hashlib.sha256()
-    sha.update(header_string.encode())
-    return sha.hexdigest()
+  assert new_block.is_valid()
+  return new_block #we mined the block. We're going to want to save it
 
-
-def mine(last_block, data):
-    index = int(last_block.index) + 1
-    timestamp = date.datetime.now()
-    # random string for now, not transactions
-    # data = "I block #%s" % (int(last_block.index) + 1)
-    prev_hash = last_block.hash
-    nonce = 0
-
-    block_hash = calculate_hash(index, prev_hash, data, timestamp, nonce)
-    while str(block_hash[0:NUM_ZEROS]) != '0' * NUM_ZEROS:
-        nonce += 1
-        block_hash = calculate_hash(index, prev_hash, data, timestamp, nonce)
-
-    # dictionary to create the new block object.
-    block_data = {}
-    block_data['index'] = index
-    block_data['prev_hash'] = last_block.hash
-    block_data['timestamp'] = timestamp
-    block_data['data'] = data
-    block_data['hash'] = block_hash
-    block_data['nonce'] = nonce
-    return Block(**block_data)
-
+  #return True
 
 if __name__ == '__main__':
-    data = "Un nuevo bloque"
-    # gather last node
-    node_blocks = sync.sync()
-    prev_block = node_blocks[-1]
-    # TODO aqui en [-1] no necesariamente agarra al último bloque, hay que \
-    # ordenarlos antes
-    new_block = mine(prev_block, data)
-    new_block.self_save()
+
+  mine_for_block()
+

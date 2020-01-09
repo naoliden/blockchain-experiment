@@ -1,47 +1,57 @@
+from block import Block
+from flask import Flask, jsonify, request
 import sync
+import requests
+import os
 import json
-from flask import Flask
+import sys
 
+from config import *
 
 node = Flask(__name__)
-node_blocks = sync.sync()
 
+sync.sync(save=True) #want to sync and save the overall "best" blockchain from peers
 
-@node.route('/', methods=['GET'])
+@node.route('/blockchain.json', methods=['GET'])
 def blockchain():
-    '''
-      Shoots back the blockchain, which in our case, is a json list of hashes
-      with the block information which is:
-      index
-      timestamp
-      data
-      hash
-      prev_hash
-    '''
-    node_blocks = sync.sync()
-    # update if they've changed
-    # Convert our blocks into dictionaries
-    # so we can send them as json objects later
-    python_blocks = []
-    for block in node_blocks:
-        '''
-        block_index = str(block.index)
-        block_timestamp = str(block.timestamp)
-        block_data = str(block.data)
-        block_hash = block.hash
-        block = {
-          "index": block.index,
-          "timestamp": block.timestamp,
-          "data": block.data,
-          "hash": block.hash,
-          "prev_hash": block.prev_hash
-        }
-        '''
-        python_blocks.append(block.__dict__())
-    # return python_blocks
-    json_blocks = json.dumps(python_blocks)
-    return json_blocks
+  '''
+    Shoots back the blockchain, which in our case, is a json list of hashes
+    with the block information which is:
+    index
+    timestamp
+    data
+    hash
+    prev_hash
+  '''
+  local_chain = sync.sync_local() #update if they've changed
+  # Convert our blocks into dictionaries
+  # so we can send them as json objects later
+  json_blocks = json.dumps(local_chain.block_list_dict())
+  return json_blocks
 
+@node.route('/mined', methods=['POST'])
+def mined():
+  possible_block_data = request.get_json()
+  print possible_block_data
+  #validate possible_block
+  possible_block = Block(possible_block_data)
+  if possible_block.is_valid():
+    #save to file to possible folder
+    index = possible_block.index
+    nonce = possible_block.nonce
+    filename = BROADCASTED_BLOCK_DIR + '%s_%s.json' % (index, nonce)
+    with open(filename, 'w') as block_file:
+      json.dump(possible_block.to_dict(), block_file)
+    return jsonify(confirmed=True)
+  else:
+    #ditch it
+    return jsonify(confirmed=False)
 
 if __name__ == '__main__':
-    node.run(debug=True)
+
+  if len(sys.argv) >= 2:
+    port = sys.argv[1]
+  else:
+    port = 5000
+
+  node.run(host='127.0.0.1', port=port)
