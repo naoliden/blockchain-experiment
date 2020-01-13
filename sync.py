@@ -38,7 +38,7 @@ def sync_overall(save=False):
                 best_chain = peer_chain
 
         except requests.exceptions.ConnectionError:
-            print("Peer at {peer} not running. Continuing to next peer.")
+            print(f"Peer at {peer} not running. Continuing to next peer.")
         else:
             print(f"Peer at {peer} is running. Gathered their blochchain for analysis.")
 

@@ -1,4 +1,4 @@
-import datetime as date
+import datetime
 import sync
 from block import Block
 import config
@@ -17,7 +17,7 @@ def mine_for_block():
 
 def mine_blocks(last_block):
     index = int(last_block.index) + 1
-    timestamp = date.datetime.now().strftime('%s')
+    timestamp = datetime.datetime.now().strftime('%s')
     # random string for now, not transactions
     data = f"I block {int(last_block.index) + 1}"
     prev_hash = last_block.hash
@@ -29,18 +29,20 @@ def mine_blocks(last_block):
                                                        prev_hash=prev_hash,
                                                        nonce=nonce)
     new_block = Block(**block_info_dict)
-    return find_valid_nonce(new_block)
+    valid_block = find_valid_nonce(new_block)
+    return valid_block
 
 
 def find_valid_nonce(new_block):
     print(f"mining for block {new_block.index}")
     # calculate_hash(index, prev_hash, data, timestamp, nonce)
     new_block.update_self_hash()
+    t1 = datetime.datetime.now()
     while str(new_block.hash[0:config.NUM_ZEROS]) != '0' * config.NUM_ZEROS:
         new_block.nonce += 1
         new_block.update_self_hash()
-
-    print(f"block {new_block.index} mined. Nonce: {new_block.nonce}")
+    t2 = datetime.datetime.now()
+    print(f"block {new_block.index} mined. Nonce: {new_block.nonce}, time taken: {t2 - t1}")
 
     assert new_block.is_valid()
     return new_block  # we mined the block. We're going to want to save it
